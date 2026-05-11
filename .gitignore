@@ -1,0 +1,19 @@
+# Go
+go/vendor/
+
+# Java / Maven
+java/target/
+java/*.class
+java/.mvn/
+
+# Python
+python/__pycache__/
+python/*.pyc
+python/.venv/
+python/venv/
+
+# Docker
+.env
+
+# OS
+.DS_Store

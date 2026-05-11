@@ -1,0 +1,91 @@
+version: '3.8'
+
+services:
+
+  # Три брокера Kafka в KRaft-режиме (без Zookeeper)
+  kafka1:
+    image: bitnami/kafka:3.7
+    hostname: kafka1
+    environment:
+      - KAFKA_CFG_NODE_ID=1
+      - KAFKA_CFG_PROCESS_ROLES=controller,broker
+      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092,CONTROLLER://:9093
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka1:9092
+      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT
+      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=1@kafka1:9093,2@kafka2:9093,3@kafka3:9093
+      - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
+      - KAFKA_KRAFT_CLUSTER_ID=MkU3OEVBNTcwNTJENDM2Qg
+    volumes:
+      - kafka1_data:/bitnami/kafka
+
+  kafka2:
+    image: bitnami/kafka:3.7
+    hostname: kafka2
+    environment:
+      - KAFKA_CFG_NODE_ID=2
+      - KAFKA_CFG_PROCESS_ROLES=controller,broker
+      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092,CONTROLLER://:9093
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka2:9092
+      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT
+      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=1@kafka1:9093,2@kafka2:9093,3@kafka3:9093
+      - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
+      - KAFKA_KRAFT_CLUSTER_ID=MkU3OEVBNTcwNTJENDM2Qg
+    volumes:
+      - kafka2_data:/bitnami/kafka
+
+  kafka3:
+    image: bitnami/kafka:3.7
+    hostname: kafka3
+    environment:
+      - KAFKA_CFG_NODE_ID=3
+      - KAFKA_CFG_PROCESS_ROLES=controller,broker
+      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092,CONTROLLER://:9093
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka3:9092
+      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT
+      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=1@kafka1:9093,2@kafka2:9093,3@kafka3:9093
+      - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
+      - KAFKA_KRAFT_CLUSTER_ID=MkU3OEVBNTcwNTJENDM2Qg
+    volumes:
+      - kafka3_data:/bitnami/kafka
+
+  # Создание топика после старта кластера
+  kafka-setup:
+    image: bitnami/kafka:3.7
+    depends_on:
+      - kafka1
+      - kafka2
+      - kafka3
+    entrypoint: ["/bin/sh", "-c"]
+    command: |
+      "
+      echo 'Ожидание готовности кластера...'
+      sleep 15
+      kafka-topics.sh --create \
+        --topic events \
+        --partitions 3 \
+        --replication-factor 2 \
+        --bootstrap-server kafka1:9092 \
+        --if-not-exists
+      echo 'Топик создан'
+      kafka-topics.sh --describe \
+        --topic events \
+        --bootstrap-server kafka1:9092
+      "
+
+  # Приложение с продюсером и двумя консьюмерами, запущенное в 2 экземплярах
+  # Для смены языка замените build: ./go на ./java или ./python
+  app:
+    build: ./go
+    environment:
+      - KAFKA_BROKERS=kafka1:9092,kafka2:9092,kafka3:9092
+      - KAFKA_TOPIC=events
+    depends_on:
+      - kafka-setup
+    deploy:
+      replicas: 2
+    restart: on-failure
+
+volumes:
+  kafka1_data:
+  kafka2_data:
+  kafka3_data:
