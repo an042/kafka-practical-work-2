@@ -28,8 +28,11 @@ func New(brokers []string, topic string) *Producer {
 		MaxAttempts: 5,
 
 		// Async: false — ждём подтверждения от брокера перед отправкой следующего сообщения.
-		// Это обеспечивает гарантию доставки At Least Once.
 		Async: false,
+
+		// Примечание: kafka-go не поддерживает Kafka-level идемпотентность (PID + sequence numbers)
+		// на уровне протокола. RequireAll + Async:false минимизируют дубликаты, но не исключают их
+		// при повторах после сетевого тайм-аута. Для полной идемпотентности используйте confluent-go.
 
 		// Balancer — распределяет сообщения по партициям по Round Robin.
 		Balancer: &kafka.RoundRobin{},

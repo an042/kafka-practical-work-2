@@ -28,10 +28,10 @@ public class EventProducer {
         props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, brokers);
         props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
         props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
-        // At Least Once: acks=all + retries
+        // Идемпотентный продюсер: гарантирует ровно одну запись при повторах (PID + sequence numbers).
+        // Требует acks=all; retries и max.in.flight автоматически выставляются клиентом.
         props.put(ProducerConfig.ACKS_CONFIG, "all");
-        props.put(ProducerConfig.RETRIES_CONFIG, 5);
-        props.put(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, false);
+        props.put(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, true);
 
         this.producer = new KafkaProducer<>(props);
     }

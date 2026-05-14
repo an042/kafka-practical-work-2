@@ -42,9 +42,11 @@ class BatchMessageConsumer:
             try:
                 event = Event.deserialize(msg.value())
                 print(f"[batch-consumer] обработано (partition={msg.partition()}, offset={msg.offset()}): {event}")
+                # Оффсет добавляем только при успешной обработке
+                offsets.append(TopicPartition(msg.topic(), msg.partition(), msg.offset() + 1))
             except Exception as e:
                 print(f"[batch-consumer] ошибка десериализации: {e}")
-            offsets.append(TopicPartition(msg.topic(), msg.partition(), msg.offset() + 1))
-        # Один коммит для всей пачки
-        self.consumer.commit(offsets=offsets)
-        print(f"[batch-consumer] закоммичена пачка из {len(batch)} сообщений")
+        if offsets:
+            # asynchronous=False: синхронный коммит — гарантирует сохранение оффсета до возврата
+            self.consumer.commit(offsets=offsets, asynchronous=False)
+            print(f"[batch-consumer] закоммичена пачка из {len(offsets)} сообщений")

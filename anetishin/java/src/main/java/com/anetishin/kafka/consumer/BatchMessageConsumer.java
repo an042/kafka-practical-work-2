@@ -71,16 +71,19 @@ public class BatchMessageConsumer {
                 KafkaEvent event = mapper.readValue(record.value(), KafkaEvent.class);
                 System.out.printf("[batch-consumer] обработано (partition=%d, offset=%d): %s%n",
                         record.partition(), record.offset(), event);
+                // Оффсет добавляем только при успешной обработке
+                offsets.put(
+                        new TopicPartition(record.topic(), record.partition()),
+                        new OffsetAndMetadata(record.offset() + 1)
+                );
             } catch (Exception e) {
                 System.err.println("[batch-consumer] ошибка десериализации: " + e.getMessage());
             }
-            offsets.put(
-                    new TopicPartition(record.topic(), record.partition()),
-                    new OffsetAndMetadata(record.offset() + 1)
-            );
         }
-        // Один коммит для всей пачки
-        consumer.commitSync(offsets);
-        System.out.println("[batch-consumer] закоммичена пачка из " + batch.size() + " сообщений");
+        // Один синхронный коммит для успешно обработанных сообщений
+        if (!offsets.isEmpty()) {
+            consumer.commitSync(offsets);
+            System.out.println("[batch-consumer] закоммичена пачка из " + offsets.size() + " сообщений");
+        }
     }
 }

@@ -9,10 +9,10 @@ class EventProducer:
         self.counter = 0
         self.producer = Producer({
             "bootstrap.servers": brokers,
-            # At Least Once: acks=all + retries
+            # Идемпотентный продюсер: гарантирует ровно одну запись при повторах.
+            # Требует acks=all; retries и max.in.flight автоматически выставляются библиотекой.
             "acks": "all",
-            "retries": 5,
-            "enable.idempotence": False,
+            "enable.idempotence": True,
         })
 
     def run(self):

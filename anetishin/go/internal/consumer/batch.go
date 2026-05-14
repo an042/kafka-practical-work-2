@@ -70,7 +70,8 @@ func (c *BatchMessageConsumer) Run(ctx context.Context) {
 			continue
 		}
 
-		// Обрабатываем каждое сообщение в пачке.
+		// Обрабатываем каждое сообщение в пачке, коммитим только успешные.
+		var toCommit []kafka.Message
 		for _, msg := range batch {
 			event, err := message.Deserialize(msg.Value)
 			if err != nil {
@@ -79,16 +80,21 @@ func (c *BatchMessageConsumer) Run(ctx context.Context) {
 			}
 			fmt.Printf("[batch-consumer] обработано (partition=%d, offset=%d): %+v\n",
 				msg.Partition, msg.Offset, event)
+			toCommit = append(toCommit, msg)
 		}
 
-		// Один коммит оффсета для всей пачки после её полной обработки.
-		if err := c.reader.CommitMessages(ctx, batch...); err != nil {
+		if len(toCommit) == 0 {
+			continue
+		}
+
+		// Один коммит оффсета для успешно обработанных сообщений.
+		if err := c.reader.CommitMessages(ctx, toCommit...); err != nil {
 			if ctx.Err() != nil {
 				return
 			}
 			log.Printf("[batch-consumer] ошибка коммита: %v", err)
 			continue
 		}
-		fmt.Printf("[batch-consumer] закоммичена пачка из %d сообщений\n", len(batch))
+		fmt.Printf("[batch-consumer] закоммичена пачка из %d сообщений\n", len(toCommit))
 	}
 }

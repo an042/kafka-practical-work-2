@@ -59,7 +59,11 @@ services:
     command: |
       "
       echo 'Ожидание готовности кластера...'
-      sleep 15
+      until kafka-topics.sh --bootstrap-server kafka1:9092 --list > /dev/null 2>&1; do
+        echo 'Kafka недоступна, повтор через 2 секунды...'
+        sleep 2
+      done
+      echo 'Kafka готова'
       kafka-topics.sh --create \
         --topic events \
         --partitions 3 \
